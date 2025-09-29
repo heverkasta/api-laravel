@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
 use App\Models\Alimento;
+use App\Models\Receita;
 
 
 Route::get('/alimento', function () {
@@ -19,7 +20,7 @@ Route::get('/alimento/{id}', function ($id) {
 Route::post('/alimento', function(Request $request) {
     $data = $request->validate([
         'nome'           => ['required', 'string', 'max:50'],
-        'quantidade'     => ['required', 'integer', 'min:0'],
+        'quantidade'     => ['required', 'numeric', 'min:0'],
         'unidade_medida' => ['required', 'string', 'max:50']
     ]);
 
@@ -50,6 +51,11 @@ Route::put('/alimento/{id}', function(Request $request, $id) {
     return response()->json($alimento);
 });//foi
 
+Route::delete('/alimento', function() {
+    Receita::truncate();
+
+    return response()->noContent();
+});
 
 Route::delete('/alimento/{id}', function($id) {
     $alimento = Alimento::findOrFail($id);
@@ -60,7 +66,7 @@ Route::delete('/alimento/{id}', function($id) {
 
 
 Route::get('/receita/gerar', function() {
-    $api_token = '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';
+    $api_token = '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';
     $lista = "";
     foreach(Alimento::all() as $linha){
         $lista .= $linha['quantidade']." ".$linha['unidade_medida']." de ".$linha['nome'].", ";
@@ -90,4 +96,60 @@ Route::get('/receita/gerar', function() {
     }
 
     return response()->json(['msgErr' => 'Algo deu errado'], 500);
+});
+
+
+//rotas das receitas
+
+Route::get('/receita', function () {
+    return Receita::all();
+});
+
+
+Route::get('/receita/{id}', function ($id) {
+    return Receita::findOrFail($id);
+});
+
+
+Route::post('/receita', function(Request $request) {
+    $data = $request->validate([
+        'titulo'           => ['required', 'string', 'max:100'],
+        'receitaMD'     => ['required', 'string']
+    ]);
+
+    $receita = new Receita();
+    $receita->titulo = $data['titulo'];
+    $receita->receitaMD = $data['receitaMD'];
+    $receita->save(); 
+
+    return response()->json($receita, 201);
+});
+
+
+Route::put('/receita/{id}', function(Request $request, $id) {
+    $receita = Receita::findOrFail($id);
+
+    $data = $request->validate([
+        'titulo'           => ['required', 'string', 'max:100'],
+        'receitaMD'     => ['required', 'string']
+    ]);
+
+    $receita->titulo = $data['titulo'];
+    $receita->receitaMD = $data['receitaMD'];
+    $receita->save();
+
+    return response()->json($receita);
+});
+
+Route::delete('/receita', function() {
+    Receita::truncate();
+
+    return response()->noContent();
+});
+
+Route::delete('/receita/{id}', function($id) {
+    $receita = Receita::findOrFail($id);
+    $receita->delete();
+
+    return response()->noContent();
 });
