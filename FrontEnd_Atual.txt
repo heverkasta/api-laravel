@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChefBot AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primario: { 500: '#10b981' },
+                        secundario: { 500: '#8b5cf6' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(-10px); } to { opacity:1; transform:translateY(0);} }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        .notificacao { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="dark:bg-gray-900 dark:text-white min-h-screen transition-colors duration-300">
+    <!-- Container de Notificações -->
+    <div id="container-notificacao" class="fixed top-4 right-4 z-50 space-y-2 max-w-sm"></div>
+
+    <!-- Container Principal -->
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-primario-500 mb-2">PantryPal AI ChefBot 🍳</h1>
+            <p class="text-gray-600 dark:text-gray-300 text-lg">Assistente inteligente para gerenciamento de ingredientes e geração de receitas</p>
+        </header>
+
+        <div class="grid lg:grid-cols-2 gap-8">
+            <!-- Coluna Esquerda - Gerenciamento de Ingredientes -->
+            <div class="space-y-8">
+                <section class="dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold text-secundario-500 mb-4">Registro de Ingredientes</h2>
+                    <form id="form-ingredientes" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Nome do Ingrediente</label>
+                            <input type="text" id="nome-ingrediente" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-primario-500 focus:border-transparent" placeholder="Ex.: Tomate, Farinha, Frango...">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Quantidade</label>
+                                <input type="number" id="quantidade-ingrediente" min="0.1" step="0.1" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-primario-500 focus:border-transparent" placeholder="0.0">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Unidade</label>
+                                <select id="unidade-ingrediente" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-primario-500 focus:border-transparent">
+                                    <option value="g">g</option>
+                                    <option value="ml">ml</option>
+                                    <option value="L">L</option>
+                                    <option value="unidade">Unidade</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-primario-500 hover:bg-primario-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                            <i data-feather="plus" class="w-5 h-5 mr-2"></i> Adicionar Ingrediente
+                        </button>
+                    </form>
+                </section>
+
+                <section class="dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold text-secundario-500 mb-4">📋 Meus Ingredientes</h2>
+                    <div id="lista-ingredientes" class="space-y-3 max-h-96 overflow-y-auto"></div>
+                </section>
+            </div>
+
+            <!-- Coluna Direita - Gerenciamento de Receitas -->
+            <div class="space-y-8">
+                <section class="dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold text-secundario-500 mb-4">👨‍🍳 Gerador de Receitas</h2>
+                    <button id="botao-gerar-receita" class="w-full bg-secundario-500 hover:bg-secundario-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center mb-4">
+                        <i data-feather="zap" class="w-5 h-5 mr-2"></i> Gerar Receita com Meus Ingredientes
+                    </button>
+                    <div id="exibir-receita" class="hidden">
+                        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                            <div id="conteudo-receita" class="space-y-4"></div>
+                            <div class="flex space-x-3 mt-6">
+                                <button id="botao-copiar-receita" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center">
+                                    <i data-feather="copy" class="w-4 h-4 mr-2"></i> Copiar Receita
+                                </button>
+                                <button id="botao-salvar-receita" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center">
+                                    <i data-feather="save" class="w-4 h-4 mr-2"></i> Salvar no BD
+                                </button>
+                                <button id="botao-limpar-receita" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center">
+                                    <i data-feather="trash-2" class="w-4 h-4 mr-2"></i> Limpar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-secundario-500">💾 Receitas Salvas no BD</h2>
+                        <button id="botao-atualizar-receitas" class="p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors">
+                            <i data-feather="refresh-cw" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div id="lista-receitas-salvas" class="space-y-3 max-h-96 overflow-y-auto"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+
+        // =========================
+        // CONFIGURAÇÃO DA API
+        // =========================
+        const URL_API = 'http://localhost:8000/api/alimento';
+        const URL_RECEITA_GERAR = 'http://localhost:8000/api/receita/gerar';
+        const URL_RECEITAS = 'http://localhost:8000/api/receitas';
+
+        // Estado Global
+        const estado = {
+            ingredientes: [],
+            receitasSalvas: [],
+            receitaAtual: null
+        };
+
+        // Elementos DOM
+        const formIngredientes = document.getElementById('form-ingredientes');
+        const inputNome = document.getElementById('nome-ingrediente');
+        const inputQuantidade = document.getElementById('quantidade-ingrediente');
+        const selectUnidade = document.getElementById('unidade-ingrediente');
+        const containerIngredientes = document.getElementById('lista-ingredientes');
+        const botaoGerarReceita = document.getElementById('botao-gerar-receita');
+        const exibirReceita = document.getElementById('exibir-receita');
+        const conteudoReceita = document.getElementById('conteudo-receita');
+        const botaoCopiar = document.getElementById('botao-copiar-receita');
+        const botaoSalvar = document.getElementById('botao-salvar-receita');
+        const botaoLimpar = document.getElementById('botao-limpar-receita');
+        const listaReceitasSalvas = document.getElementById('lista-receitas-salvas');
+        const containerNotificacao = document.getElementById('container-notificacao');
+        const botaoAtualizarReceitas = document.getElementById('botao-atualizar-receitas');
+
+        // =========================
+        // FUNÇÕES DE NOTIFICAÇÃO
+        // =========================
+        function mostrarNotificacao(mensagem, tipo='info'){
+            const cores = { sucesso:'bg-green-500 dark:bg-green-600', erro:'bg-red-500 dark:bg-red-600', info:'bg-blue-500 dark:bg-blue-600'};
+            const notificacao = document.createElement('div');
+            notificacao.className = `notificacao fade-in p-4 rounded-lg shadow-lg text-white ${cores[tipo]}`;
+            notificacao.innerHTML = `<div class="flex items-center justify-between"><span>${mensagem}</span><button onclick="this.parentElement.parentElement.remove()" class="ml-4"><i data-feather="x" class="w-4 h-4"></i></button></div>`;
+            containerNotificacao.appendChild(notificacao);
+            feather.replace();
+            setTimeout(()=>notificacao.remove(),4000);
+        }
+
+        // =========================
+        // FUNÇÕES DE CONSUMO DA API - INGREDIENTES
+        // =========================
+        async function listarIngredientes(){
+            try{
+                const resposta = await fetch(URL_API);
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                const dados = await resposta.json();
+                estado.ingredientes = dados.map(a=>({
+                    id: a.id,
+                    nome: a.nome,
+                    quantidade: a.quantidade,
+                    unidade: a.unidade_medida
+                }));
+                renderizarIngredientes();
+            } catch(erro){
+                console.error('Erro ao listar ingredientes:', erro);
+                mostrarNotificacao('Erro ao buscar ingredientes da API','erro');
+            }
+        }
+
+        async function criarIngrediente(nome, quantidade, unidade){
+            try{
+                const resposta = await fetch(URL_API, {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ nome, quantidade, unidade_medida: unidade })
+                });
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                const novo = await resposta.json();
+                estado.ingredientes.push({
+                    id: novo.id,
+                    nome: novo.nome,
+                    quantidade: novo.quantidade,
+                    unidade: novo.unidade_medida
+                });
+                renderizarIngredientes();
+                mostrarNotificacao('Ingrediente adicionado com sucesso','sucesso');
+            } catch(erro){
+                console.error('Erro ao criar ingrediente:', erro);
+                mostrarNotificacao('Erro ao criar ingrediente na API','erro');
+            }
+        }
+
+        async function atualizarIngrediente(id, nome, quantidade, unidade){
+            try{
+                const resposta = await fetch(`${URL_API}/${id}`,{
+                    method:'PUT',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ nome, quantidade, unidade_medida: unidade })
+                });
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                const atualizado = await resposta.json();
+                const index = estado.ingredientes.findIndex(i=>i.id===id);
+                if(index!==-1){
+                    estado.ingredientes[index]={
+                        id: atualizado.id,
+                        nome: atualizado.nome,
+                        quantidade: atualizado.quantidade,
+                        unidade: atualizado.unidade_medida
+                    };
+                    renderizarIngredientes();
+                    mostrarNotificacao('Ingrediente atualizado com sucesso','sucesso');
+                }
+            } catch(erro){
+                console.error('Erro ao atualizar ingrediente:', erro);
+                mostrarNotificacao('Erro ao atualizar ingrediente na API','erro');
+            }
+        }
+
+        async function deletarIngredienteAPI(id){
+            try{
+                const resposta = await fetch(`${URL_API}/${id}`, { method:'DELETE' });
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                estado.ingredientes = estado.ingredientes.filter(i=>i.id!==id);
+                renderizarIngredientes();
+                mostrarNotificacao('Ingrediente removido com sucesso','sucesso');
+            } catch(erro){
+                console.error('Erro ao deletar ingrediente:', erro);
+                mostrarNotificacao('Erro ao deletar ingrediente na API','erro');
+            }
+        }
+
+        // =========================
+        // FUNÇÕES DE CONSUMO DA API - RECEITAS
+        // =========================
+        async function listarReceitasSalvas(){
+            try{
+                const resposta = await fetch(URL_RECEITAS);
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                const dados = await resposta.json();
+                estado.receitasSalvas = dados;
+                renderizarReceitasSalvas();
+            } catch(erro){
+                console.error('Erro ao listar receitas:', erro);
+                mostrarNotificacao('Erro ao buscar receitas do banco','erro');
+            }
+        }
+
+        async function salvarReceitaNoBD(titulo, conteudoMarkdown, conteudoHTML, ingredientes){
+            try{
+                const resposta = await fetch(URL_RECEITAS, {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        titulo,
+                        conteudo_markdown: conteudoMarkdown,
+                        conteudo_html: conteudoHTML,
+                        ingredientes_utilizados: ingredientes
+                    })
+                });
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                const novaReceita = await resposta.json();
+                estado.receitasSalvas.unshift(novaReceita);
+                renderizarReceitasSalvas();
+                mostrarNotificacao('Receita salva no banco com sucesso!','sucesso');
+                return novaReceita;
+            } catch(erro){
+                console.error('Erro ao salvar receita:', erro);
+                mostrarNotificacao('Erro ao salvar receita no banco','erro');
+                return null;
+            }
+        }
+
+        async function deletarReceitaDoBD(id){
+            try{
+                const resposta = await fetch(`${URL_RECEITAS}/${id}`, { method:'DELETE' });
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                estado.receitasSalvas = estado.receitasSalvas.filter(r=>r.id!==id);
+                renderizarReceitasSalvas();
+                mostrarNotificacao('Receita deletada do banco','sucesso');
+            } catch(erro){
+                console.error('Erro ao deletar receita:', erro);
+                mostrarNotificacao('Erro ao deletar receita do banco','erro');
+            }
+        }
+
+        async function gerarReceita(){
+            if(estado.ingredientes.length === 0){
+                mostrarNotificacao('Adicione ingredientes primeiro','erro');
+                return;
+            }
+
+            try{
+                // Mostrar loading
+                botaoGerarReceita.innerHTML = '<i data-feather="loader" class="w-5 h-5 mr-2 animate-spin"></i> Gerando receita...';
+                botaoGerarReceita.disabled = true;
+                feather.replace();
+
+                const resposta = await fetch(URL_RECEITA_GERAR);
+                if (!resposta.ok) throw new Error('Erro na resposta da API');
+                
+                const dados = await resposta.json();
+                const receitaMarkdown = dados.markdown || dados;
+                const ingredientesUsados = dados.ingredientes || estado.ingredientes;
+                
+                const receitaHTML = converterMarkdownParaHTML(receitaMarkdown);
+                
+                estado.receitaAtual = {
+                    markdown: receitaMarkdown,
+                    html: receitaHTML,
+                    ingredientes: ingredientesUsados,
+                    dataGeracao: new Date().toISOString()
+                };
+
+                exibirReceitaNaTela(estado.receitaAtual);
+                mostrarNotificacao('Receita gerada com sucesso!','sucesso');
+
+            } catch(erro){
+                console.error('Erro ao gerar receita:', erro);
+                mostrarNotificacao('Erro ao gerar receita via API','erro');
+            } finally {
+                // Restaurar botão
+                botaoGerarReceita.innerHTML = '<i data-feather="zap" class="w-5 h-5 mr-2"></i> Gerar Receita com Meus Ingredientes';
+                botaoGerarReceita.disabled = false;
+                feather.replace();
+            }
+        }
+
+        // =========================
+        // FUNÇÕES DE RECEITA
+        // =========================
+        function converterMarkdownParaHTML(markdown) {
+            let html = markdown
+                .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mb-2 text-primario-500">$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mb-3 text-primario-500">$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mb-4 text-primario-500">$1</h1>')
+                .replace(/^\* (.*$)/gim, '<li class="mb-1">$1</li>')
+                .replace(/^- (.*$)/gim, '<li class="mb-1">$1</li>')
+                .replace(/^\d+\. (.*$)/gim, '<li class="mb-2">$1</li>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n\n/g, '</p><p class="mb-4">')
+                .replace(/\n/g, '<br>');
+
+            // Envolver em parágrafos se não começar com tag HTML
+            if (!html.startsWith('<')) {
+                html = '<p class="mb-4">' + html + '</p>';
+            }
+
+            // Processar listas
+            html = html.replace(/(<li class="mb-[12]">.*?<\/li>)/gs, (match) => {
+                const items = match.match(/<li class="mb-[12]">(.*?)<\/li>/g);
+                if (items) {
+                    return '<ul class="list-disc list-inside mb-4 ml-4">' + items.join('') + '</ul>';
+                }
+                return match;
+            });
+
+            return html;
+        }
+
+        function exibirReceitaNaTela(receita){
+            conteudoReceita.innerHTML = receita.html;
+            exibirReceita.classList.remove('hidden');
+            exibirReceita.scrollIntoView({behavior:'smooth'});
+        }
+
+        function carregarReceitaDoBD(receita){
+            estado.receitaAtual = {
+                id: receita.id,
+                markdown: receita.conteudo_markdown,
+                html: receita.conteudo_html || converterMarkdownParaHTML(receita.conteudo_markdown),
+                ingredientes: receita.ingredientes_utilizados || [],
+                titulo: receita.titulo
+            };
+            exibirReceitaNaTela(estado.receitaAtual);
+            mostrarNotificacao(`Receita "${receita.titulo}" carregada`,'info');
+        }
+
+        // =========================
+        // FUNÇÕES DE RENDERIZAÇÃO
+        // =========================
+        function renderizarIngredientes(){
+            containerIngredientes.innerHTML = estado.ingredientes.length === 0
+            ? '<p class="text-gray-500 dark:text-gray-400 text-center py-4">Nenhum ingrediente adicionado</p>'
+            : estado.ingredientes.map(i=>`
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg slide-in">
+                    <div><span class="font-medium">${i.nome}</span> <span class="text-gray-600 dark:text-gray-300 ml-2">${i.quantidade} ${i.unidade}</span></div>
+                    <div class="flex space-x-2">
+                        <button onclick="editarIngredientePrompt(${i.id})" class="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"><i data-feather="edit" class="w-4 h-4"></i></button>
+                        <button onclick="deletarIngredienteAPI(${i.id})" class="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors"><i data-feather="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            feather.replace();
+        }
+
+        function editarIngredientePrompt(id){
+            const ingrediente = estado.ingredientes.find(i=>i.id===id);
+            if(!ingrediente) return;
+            const novoNome = prompt('Digite o novo nome:', ingrediente.nome);
+            if(!novoNome||!novoNome.trim()){mostrarNotificacao('Nome inválido','erro'); return;}
+            const novaQuantidade = parseFloat(prompt('Digite a nova quantidade:', ingrediente.quantidade));
+            if(isNaN(novaQuantidade)||novaQuantidade<=0){mostrarNotificacao('Quantidade inválida','erro'); return;}
+            const novaUnidade = prompt('Digite a unidade (g, ml, L, unidade):', ingrediente.unidade);
+            if(!['g','ml','L','unidade'].includes(novaUnidade)){mostrarNotificacao('Unidade inválida','erro'); return;}
+            atualizarIngrediente(id, novoNome.trim(), novaQuantidade, novaUnidade);
+        }
+
+        function renderizarReceitasSalvas(){
+            listaReceitasSalvas.innerHTML = estado.receitasSalvas.length === 0
+            ? '<p class="text-gray-500 dark:text-gray-400 text-center py-4">Nenhuma receita salva no banco</p>'
+            : estado.receitasSalvas.map(r=>`
+                <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer slide-in" onclick="carregarReceitaDoBD({id:${r.id}, conteudo_markdown:'${r.conteudo_markdown.replace(/'/g, "\\'")}', conteudo_html:'${(r.conteudo_html||'').replace(/'/g, "\\'")}', ingredientes_utilizados:${JSON.stringify(r.ingredientes_utilizados||[])}, titulo:'${r.titulo.replace(/'/g, "\\'")}'})">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-medium">${r.titulo}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Criada em ${new Date(r.created_at).toLocaleDateString()}</p>
+                            ${r.ingredientes_utilizados && r.ingredientes_utilizados.length > 0 
+                                ? `<p class="text-xs text-gray-500 mt-1">${r.ingredientes_utilizados.length} ingrediente(s) utilizados</p>` 
+                                : ''
+                            }
+                        </div>
+                        <button onclick="event.stopPropagation(); deletarReceitaDoBD(${r.id})" class="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded">
+                            <i data-feather="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            feather.replace();
+        }
+
+        // =========================
+        // EVENT LISTENERS
+        // =========================
+
+        // Formulário de ingredientes
+        formIngredientes.addEventListener('submit', e=>{
+            e.preventDefault();
+            const nome = inputNome.value.trim();
+            const quantidade = parseFloat(inputQuantidade.value);
+            const unidade = selectUnidade.value;
+            if(!nome){mostrarNotificacao('Nome do ingrediente não pode ser vazio','erro'); return;}
+            if(isNaN(quantidade)||quantidade<=0){mostrarNotificacao('Quantidade inválida','erro'); return;}
+            criarIngrediente(nome, quantidade, unidade);
+            inputNome.value=''; inputQuantidade.value='';
+        });
+
+        // Botões de ação da receita
+        botaoGerarReceita.addEventListener('click', gerarReceita);
+
+        botaoCopiar.addEventListener('click',()=>{
+            if(!estado.receitaAtual){
+                mostrarNotificacao('Nenhuma receita para copiar','erro');
+                return;
+            }
+            const texto = conteudoReceita.innerText;
+            navigator.clipboard.writeText(texto).then(()=>{
+                mostrarNotificacao('Receita copiada para área de transferência','sucesso');
+            }).catch(()=>{
+                mostrarNotificacao('Erro ao copiar receita','erro');
+            });
+        });
+
+        botaoSalvar.addEventListener('click', async ()=>{
+            if(!estado.receitaAtual){
+                mostrarNotificacao('Nenhuma receita para salvar','erro');
+                return;
+            }
+
+            const titulo = prompt('Digite um título para a receita:') || `Receita ${new Date().toLocaleDateString()}`;
+            if(!titulo.trim()){
+                mostrarNotificacao('Título inválido','erro');
+                return;
+            }
+
+            // Mostrar loading no botão
+            const textoOriginal = botaoSalvar.innerHTML;
+            botaoSalvar.innerHTML = '<i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i> Salvando...';
+            botaoSalvar.disabled = true;
+            feather.replace();
+
+            const receitaSalva = await salvarReceitaNoBD(
+                titulo.trim(),
+                estado.receitaAtual.markdown,
+                estado.receitaAtual.html,
+                estado.receitaAtual.ingredientes
+            );
+
+            // Restaurar botão
+            botaoSalvar.innerHTML = textoOriginal;
+            botaoSalvar.disabled = false;
+            feather.replace();
+        });
+
+        botaoLimpar.addEventListener('click',()=>{
+            conteudoReceita.innerHTML='';
+            exibirReceita.classList.add('hidden');
+            estado.receitaAtual = null;
+            mostrarNotificacao('Receita limpa','info');
+        });
+
+        // Botão de atualizar receitas
+        botaoAtualizarReceitas.addEventListener('click', ()=>{
+            const icone = botaoAtualizarReceitas.querySelector('i');
+            icone.classList.add('animate-spin');
+            listarReceitasSalvas().finally(()=>{
+                setTimeout(()=>icone.classList.remove('animate-spin'), 500);
+            });
+        });
+
+        // =========================
+        // INICIALIZAÇÃO
+        // =========================
+        document.addEventListener('DOMContentLoaded', function() {
+            listarIngredientes();
+            listarReceitasSalvas();
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<?php
+// ===================================
+// 1. MIGRATION - create_receitas_table.php
+// ===================================
+// Arquivo: database/migrations/xxxx_xx_xx_create_receitas_table.php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('receitas', function (Blueprint $table) {
+            $table->id();
+            $table->string('titulo');
+            $table->text('conteudo_markdown'); // Receita em formato markdown
+            $table->text('conteudo_html')->nullable(); // Receita em HTML (opcional)
+            $table->json('ingredientes_utilizados')->nullable(); // Ingredientes que foram usados
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('receitas');
+    }
+};
+
+// ===================================
+// 2. MODEL - Receita.php
+// ===================================
+// Arquivo: app/Models/Receita.php
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Receita extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'titulo',
+        'conteudo_markdown',
+        'conteudo_html',
+        'ingredientes_utilizados'
+    ];
+
+    protected $casts = [
+        'ingredientes_utilizados' => 'array'
+    ];
+}
+
+// ===================================
+// 3. ROUTES API - Adicionar no api.php
+// ===================================
+// Adicionar essas rotas no arquivo routes/api.php
+
+// Rotas para Receitas
+Route::get('/receitas', function () {
+    return Receita::orderBy('created_at', 'desc')->get();
+});
+
+Route::get('/receitas/{id}', function ($id) {
+    return Receita::findOrFail($id);
+});
+
+Route::post('/receitas', function(Request $request) {
+    $data = $request->validate([
+        'titulo' => ['required', 'string', 'max:255'],
+        'conteudo_markdown' => ['required', 'string'],
+        'conteudo_html' => ['nullable', 'string'],
+        'ingredientes_utilizados' => ['nullable', 'array']
+    ]);
+
+    $receita = Receita::create($data);
+    return response()->json($receita, 201);
+});
+
+Route::put('/receitas/{id}', function(Request $request, $id) {
+    $receita = Receita::findOrFail($id);
+
+    $data = $request->validate([
+        'titulo' => ['required', 'string', 'max:255'],
+        'conteudo_markdown' => ['required', 'string'],
+        'conteudo_html' => ['nullable', 'string'],
+        'ingredientes_utilizados' => ['nullable', 'array']
+    ]);
+
+    $receita->update($data);
+    return response()->json($receita);
+});
+
+Route::delete('/receitas/{id}', function($id) {
+    $receita = Receita::findOrFail($id);
+    $receita->delete();
+    return response()->noContent();
+});
+
+// ===================================
+// 4. ATUALIZAR api.php COMPLETO
+// ===================================
+// Arquivo completo: routes/api.php
+
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
+use App\Models\Alimento;
+use App\Models\Receita; // Adicionar import
+
+// ============= ROTAS DE ALIMENTOS =============
+Route::get('/alimento', function () {
+    return Alimento::all();
+});
+
+Route::get('/alimento/{id}', function ($id) {
+    return Alimento::findOrFail($id);
+});
+
+Route::post('/alimento', function(Request $request) {
+    $data = $request->validate([
+        'nome'           => ['required', 'string', 'max:50'],
+        'quantidade'     => ['required', 'numeric', 'min:0'], // Mudado para numeric
+        'unidade_medida' => ['required', 'string', 'max:50']
+    ]);
+
+    $alimento = Alimento::create($data);
+    return response()->json($alimento, 201);
+});
+
+Route::put('/alimento/{id}', function(Request $request, $id) {
+    $alimento = Alimento::findOrFail($id);
+
+    $data = $request->validate([
+        'nome'           => ['required', 'string', 'max:50'],
+        'quantidade'     => ['required', 'numeric', 'min:0'], // Mudado para numeric
+        'unidade_medida' => ['required', 'string', 'max:50']
+    ]);
+
+    $alimento->update($data);
+    return response()->json($alimento);
+});
+
+Route::delete('/alimento/{id}', function($id) {
+    $alimento = Alimento::findOrFail($id);
+    $alimento->delete();
+    return response()->noContent();
+});
+
+// ============= ROTAS DE RECEITAS =============
+Route::get('/receitas', function () {
+    return Receita::orderBy('created_at', 'desc')->get();
+});
+
+Route::get('/receitas/{id}', function ($id) {
+    return Receita::findOrFail($id);
+});
+
+Route::post('/receitas', function(Request $request) {
+    $data = $request->validate([
+        'titulo' => ['required', 'string', 'max:255'],
+        'conteudo_markdown' => ['required', 'string'],
+        'conteudo_html' => ['nullable', 'string'],
+        'ingredientes_utilizados' => ['nullable', 'array']
+    ]);
+
+    $receita = Receita::create($data);
+    return response()->json($receita, 201);
+});
+
+Route::put('/receitas/{id}', function(Request $request, $id) {
+    $receita = Receita::findOrFail($id);
+
+    $data = $request->validate([
+        'titulo' => ['required', 'string', 'max:255'],
+        'conteudo_markdown' => ['required', 'string'],
+        'conteudo_html' => ['nullable', 'string'],
+        'ingredientes_utilizados' => ['nullable', 'array']
+    ]);
+
+    $receita->update($data);
+    return response()->json($receita);
+});
+
+Route::delete('/receitas/{id}', function($id) {
+    $receita = Receita::findOrFail($id);
+    $receita->delete();
+    return response()->noContent();
+});
+
+// ============= GERAÇÃO DE RECEITAS =============
+Route::get('/receita/gerar', function() {
+    $api_token = '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';
+    $lista = "";
+    foreach(Alimento::all() as $linha){
+        $lista .= $linha['quantidade']." ".$linha['unidade_medida']." de ".$linha['nome'].", ";
+    }
+    $prompt = "Faça uma receita extremamente deliciosa usando APENAS ".$lista."mas não precisa usar tudo e se necessario, pode usar ingredientes basicos que toda casa tem como agua, sal e açucar. Por favor, formate em markdown com títulos claros.";
+
+    $response = Http::timeout(30)->withHeaders([
+        'Authorization' => 'Bearer ' . $api_token,
+        'Content-Type' => 'application/json',
+    ])->post('https://router.huggingface.co/v1/chat/completions', [
+        'model' => 'deepseek-ai/DeepSeek-V3.1-Terminus',
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        'max_tokens' => 1000,
+        'temperature' => 0.7,
+        'stream' => false
+    ]);
+    
+    if ($response->successful()) {
+        $result = $response->json();
+        $receita = $result['choices'][0]['message']['content'] ?? 'Receita não disponivel';
+        return response()->json([
+            'markdown' => $receita,
+            'ingredientes' => Alimento::all()->toArray()
+        ]);
+    }
+
+    return response()->json(['msgErr' => 'Algo deu errado'], 500);
+});
+
+// ===================================
+// 5. ATUALIZAR MODEL ALIMENTO
+// ===================================
+// Arquivo: app/Models/Alimento.php
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Alimento extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'nome',
+        'quantidade', 
+        'unidade_medida'
+    ];
+}
